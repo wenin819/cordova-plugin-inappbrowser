@@ -21,6 +21,7 @@ package org.apache.cordova.inappbrowser;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.provider.Browser;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -51,6 +52,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.Config;
@@ -109,6 +111,9 @@ public class InAppBrowser extends CordovaPlugin {
     private ValueCallback<Uri[]> mUploadCallbackLollipop;
     private final static int FILECHOOSER_REQUESTCODE = 1;
     private final static int FILECHOOSER_REQUESTCODE_LOLLIPOP = 2;
+    private boolean showTitle = false;
+    private String title = null;
+    private String userAgent = null;
 
     /**
      * Executes the request and returns PluginResult.
@@ -367,6 +372,8 @@ public class InAppBrowser extends CordovaPlugin {
      * @return
      */
     private HashMap<String, Boolean> parseFeature(String optString) {
+        showTitle = false;
+        userAgent = null;
         if (optString.equals(NULL)) {
             return null;
         } else {
@@ -377,7 +384,15 @@ public class InAppBrowser extends CordovaPlugin {
                 option = new StringTokenizer(features.nextToken(), "=");
                 if (option.hasMoreElements()) {
                     String key = option.nextToken();
-                    Boolean value = option.nextToken().equals("no") ? Boolean.FALSE : Boolean.TRUE;
+                    String val = option.nextToken();
+                    Boolean value = val.equals("no") ? Boolean.FALSE : Boolean.TRUE;
+                    if("title".equals(key)) {
+                        value = Boolean.TRUE;
+                        title = val;
+                        showTitle = true;
+                    } else if("useragent".equalsIgnoreCase(key)) {
+                        userAgent = val;
+                    }
                     map.put(key, value);
                 }
             }
@@ -792,6 +807,10 @@ public class InAppBrowser extends CordovaPlugin {
                 if (appendUserAgent != null) {
                     settings.setUserAgentString(settings.getUserAgentString() + appendUserAgent);
                 }
+                if (null != userAgent) {
+                    settings.setUserAgentString(userAgent);
+                }
+
 
                 //Toggle whether this is enabled or not!
                 Bundle appSettings = cordova.getActivity().getIntent().getExtras();
@@ -820,13 +839,32 @@ public class InAppBrowser extends CordovaPlugin {
                 actionButtonContainer.addView(back);
                 actionButtonContainer.addView(forward);
 
+                // Add the back and forward buttons to our action button container layout
+                if(showTitle) {
+                    TextView textView = new TextView(cordova.getActivity());
+                    RelativeLayout.LayoutParams textViewLayoutParams = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                    textViewLayoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
+                    textViewLayoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+                    textView.setLayoutParams(textViewLayoutParams);
+                    textView.setId(Integer.valueOf(101));
+                    textView.setSingleLine(true);
+                    textView.setTextSize(18);
+                    textView.setTextColor(Color.BLACK);
+                    textView.setText(title);
+
+                    toolbar.addView(actionButtonContainer);
+                    toolbar.addView(textView);
+                } else {
+
                 // Add the views to our toolbar
-                toolbar.addView(actionButtonContainer);
-                toolbar.addView(edittext);
+                    toolbar.addView(actionButtonContainer);
+                    toolbar.addView(edittext);
+                }
+
                 toolbar.addView(close);
 
                 // Don't add the toolbar if its been disabled
-                if (getShowLocationBar()) {
+                if (getShowLocationBar() || showTitle) {
                     // Add our toolbar to our main view/layout
                     main.addView(toolbar);
                 }
